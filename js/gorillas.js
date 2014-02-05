@@ -31,8 +31,13 @@ function Gorillas(options) {
   this.gorillaImg = new Image();
   this.gorillaImg.src = "img/gorilla.png";
 
-  this.bananaImg = new Image();
-  this.bananaImg.src = "img/banana.png";
+  this.numBananaImgs = 4;
+  this.bananaImgs = [];
+  for (var i=0; i < this.numBananaImgs; i += 1) {
+    this.bananaImgs[i] = new Image();
+    this.bananaImgs[i].src = "img/banana-" + String(i) + ".png";
+    this.bananaImgs[i].onload = function() { console.log("loaded ", i); };
+  }
 
   this.initScreen();
   this.placeBuildings();
@@ -290,11 +295,11 @@ Gorillas.prototype.mouseUp = function(
 Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, time) {
 
   var deltaTime = (time - startTime) / 300;
+
   var xpos = startPoint.x + (xVel * deltaTime);
   var ypos = startPoint.y + (yVel * deltaTime) + (this.gravity * deltaTime * deltaTime);
 
   this.uiContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
-  this.uiContext.drawImage(this.bananaImg, xpos, ypos);
 
   // Out of bounds.
   if (xpos > this.toPixels(this.mapWidth) + 100 ||
@@ -303,8 +308,20 @@ Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, t
     return;
   }
 
+  // Check for bounds collision.
+  var hasCollision = this.checkEdgeCollision(
+    xpos,
+    ypos,
+    this.bananaImgs[0].width,
+    this.bananaImgs[0].width);
 
-  // TODO: y position and collision with context layer.
+  if (hasCollision) {
+    // Do the splosion.
+  }
+
+  // Use a rotated banana.
+  var bananaSeq = parseInt(deltaTime, 10) % this.numBananaImgs;
+  this.uiContext.drawImage(this.bananaImgs[bananaSeq], xpos, ypos);
 
   // Timeout after 5 seconds.
   if (time - startTime < 5000) {
@@ -325,4 +342,8 @@ Gorillas.prototype.pointIsInsideBox = function(point, boxX, boxY, boxWidth, boxH
   }
 
   return false;
+};
+
+Gorillas.prototype.checkEdgeCollision = function(x, y, width, height) {
+  // TODO: Implement.
 };
