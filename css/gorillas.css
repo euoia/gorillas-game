@@ -1,0 +1,8 @@
+.screen {
+	background-color: blue;
+}
+
+.building {
+	background-color: grey;
+	border-left: 1px solid blue;
+}
