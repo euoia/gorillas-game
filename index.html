@@ -19,16 +19,18 @@
         <link rel="stylesheet" href="css/gorillas.css">
 
 		<script type="text/javascript" charset="utf-8">
+			var gorillas;
 			$(document).ready (function () {
-				var gorillas = new Gorillas({
-					mapWidth: 50,
-					mapHeight: 25,
+				gorillas = new Gorillas({
+					mapWidth: 40,
+					mapHeight: 22,
 					screen: 'gorillas'
 				});
 			});
 		</script>
     </head>
     <body>
-		<div id="gorillas" />
+		<!--  TODO: Dynamically add the canvas element. -->
+		<div id="gorillas"><canvas id="c"></canvas></div>
 	</body>
 </html>
