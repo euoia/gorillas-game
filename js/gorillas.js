@@ -61,15 +61,14 @@ Gorillas.prototype.placeBuildings = function() {
 };
 
 Gorillas.prototype.placeGorillas = function() {
-  //var player1GorillaX = this.randomIntBetween(0, this.toPixels(5));
-  //var player2GorillaX = this.randomIntBetween(this.mapWidth, this.mapWidth - this.toPixels(5));
-  var player1GorillaX = 5;
-  var player2GorillaX = 35;
+  var player1GorillaX = this.randomIntBetween(2, 10);
+  var player2GorillaX = this.randomIntBetween(this.mapWidth - 10, this.mapWidth - 2);
 
   this.placeGorilla(this.findGorillaLocation(this.toPixels(player1GorillaX)));
   this.placeGorilla(this.findGorillaLocation(this.toPixels(player2GorillaX)));
 };
 
+// TODO: Do not intersect a building when placing the gorillas.
 // Place a single gorilla - search down from the top.
 Gorillas.prototype.findGorillaLocation = function(xpos) {
   // Search for the first non-blue pixel (represents a building).
