@@ -18,11 +18,16 @@ function Gorillas(options) {
   this.canvas.setAttribute('width', this.toPixels(this.mapWidth) + 'px');
   this.canvas.setAttribute('height', this.toPixels(this.mapHeight) + 'px');
 
-  // Easier to see when livereload has kicked off.
-  console.log(Date.now());
+  this.gorillaImg = new Image();
+  this.gorillaImg.src = "img/gorilla.png";
 
   this.initScreen();
   this.placeBuildings();
+
+  // If we had more images I would write a proper preloader.
+  this.gorillaImg.onload = function () {
+    this.placeGorillas();
+  }.bind(this);
 }
 
 Gorillas.prototype.initScreen = function() {
@@ -53,6 +58,47 @@ Gorillas.prototype.placeBuildings = function() {
     lastWidth = width;
     lastHeight = height;
   }
+};
+
+Gorillas.prototype.placeGorillas = function() {
+  //var player1GorillaX = this.randomIntBetween(0, this.toPixels(5));
+  //var player2GorillaX = this.randomIntBetween(this.mapWidth, this.mapWidth - this.toPixels(5));
+  var player1GorillaX = 5;
+  var player2GorillaX = 35;
+
+  this.placeGorilla(this.findGorillaLocation(this.toPixels(player1GorillaX)));
+  this.placeGorilla(this.findGorillaLocation(this.toPixels(player2GorillaX)));
+};
+
+// Place a single gorilla - search down from the top.
+Gorillas.prototype.findGorillaLocation = function(xpos) {
+  // Search for the first non-blue pixel (represents a building).
+
+  var imgData;
+  var x = xpos, y = 0;
+
+  while (y < this.toPixels(this.mapHeight)) {
+    imgData = this.context.getImageData(x,y,1,1);
+
+    if (this.isBackgroundColour(imgData.data) === 0) {
+      console.log("Found non-background colour at x=%d y=%d", x, y);
+      return {
+        'x': x,
+        'y': y - this.gorillaImg.height
+      };
+    }
+
+    y += 1;
+  }
+
+  return {'x': x, 'y': y};
+  //throw new error('Unable to place gorilla!');
+
+};
+
+Gorillas.prototype.placeGorilla = function(point) {
+  console.log("Placing gorilla at x=%d y=%d", point.x, point.y);
+  this.context.drawImage(this.gorillaImg, point.x, point.y);
 };
 
 // Converts a size in grid positions to pixels
@@ -110,7 +156,7 @@ Gorillas.prototype.drawWindow = function(xpos, ypos) {
                         7,
                         12);
 
-  console.log("Drawing window at colour=%s xpos=%d ypos=%d", colour, xpos, ypos);
+  //console.log("Drawing window at colour=%s xpos=%d ypos=%d", colour, xpos, ypos);
 };
 
 Gorillas.prototype.randomIntBetween = function(min, max) {
@@ -142,4 +188,12 @@ Gorillas.prototype.randomWindowColour = function() {
   }
 };
 
+// Check if an imgData array (as returned by getImageData().data) is the
+// background colour.
+Gorillas.prototype.isBackgroundColour = function(imgData) {
+  if (imgData[0] === 0 && imgData[1] === 0 && imgData[2] == 255) {
+    return 1;
+  }
 
+  return 0;
+};
