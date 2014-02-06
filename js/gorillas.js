@@ -81,7 +81,6 @@ function Gorillas(options) {
 }
 
 Gorillas.prototype.initScreen = function() {
-  // x = 10, y = 20, width = 200, height = 100
   this.context.fillStyle = 'blue';
   this.context.fillRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
 };
