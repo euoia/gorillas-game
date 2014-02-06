@@ -15,11 +15,19 @@ function Gorillas(options) {
   this.screen.style.width = this.toPixels(this.mapWidth) + 'px';
   this.screen.style.height = this.toPixels(this.mapHeight) + 'px';
 
+  // The background layer, gorillas and buildings.
   this.canvas = document.getElementById("c");
   this.canvas.style.position = 'absolute';
   this.canvas.setAttribute('width', this.toPixels(this.mapWidth) + 'px');
   this.canvas.setAttribute('height', this.toPixels(this.mapHeight) + 'px');
   this.context = this.canvas.getContext('2d');
+
+  // The Banana overlay layer.
+  this.banana = document.getElementById("banana");
+  this.banana.style.position = 'absolute';
+  this.banana.setAttribute('width', this.toPixels(this.mapWidth) + 'px');
+  this.banana.setAttribute('height', this.toPixels(this.mapHeight) + 'px');
+  this.bananaContext = this.banana.getContext('2d');
 
   // The UI overlay layer.
   this.ui = document.getElementById("ui");
@@ -28,21 +36,24 @@ function Gorillas(options) {
   this.ui.setAttribute('height', this.toPixels(this.mapHeight) + 'px');
   this.uiContext = this.ui.getContext('2d');
 
+  // Use an image loader.
+  var imageLoader = new ImageLoader();
+
   // The gorilla.
-  this.gorillaImg = new Image();
-  this.gorillaImg.src = "img/gorilla.png";
+  this.gorillaImg = imageLoader.load('img/gorilla.png');
 
   // The bananas.
   this.numBananaImgs = 4;
   this.bananaImgs = [];
   for (var i=0; i < this.numBananaImgs; i += 1) {
-    this.bananaImgs[i] = new Image();
-    this.bananaImgs[i].src = "img/banana-" + String(i) + ".png";
+    this.bananaImgs[i] = imageLoader.load('img/banana-' + String(i) + '.png');
   }
 
   // The explosion.
-  this.explosionImg = new Image();
-  this.explosionImg.src = "img/explosion.png";
+  this.explosionImg = imageLoader.load('img/explosion.png');
+
+  // The sun.
+  this.sunImg = imageLoader.load('img/sun.png');
 
   this.initScreen();
   this.placeBuildings();
@@ -58,14 +69,15 @@ function Gorillas(options) {
   this.startingPlayer = 0;
 
   // How many turns have passed?
-  this.turnNumber = 0;
+  this.turnNumber = null;
 
   // If we had more images I would write a proper preloader.
   // TODO: Make a preloader so that the banana is definitely loaded.
-  this.gorillaImg.onload = function () {
+  imageLoader.done(function () {
     this.placeGorillas();
-    this.ui.addEventListener('mousedown', this.canvasClicked.bind(this));
-  }.bind(this);
+    this.banana.addEventListener('mousedown', this.canvasClicked.bind(this));
+    this.nextTurn();
+  }.bind(this));
 }
 
 Gorillas.prototype.initScreen = function() {
@@ -241,7 +253,7 @@ Gorillas.prototype.isBackgroundColour = function(imgData) {
 
 Gorillas.prototype.canvasClicked = function(e) {
   console.log("e", e);
-  this.uiContext.fillStyle = 'pink';
+  this.bananaContext.fillStyle = 'pink';
 
   var point = {'x': e.layerX, 'y': e.layerY};
 
@@ -259,16 +271,16 @@ Gorillas.prototype.canvasClicked = function(e) {
         return this.mouseMoved(0, point, e);
       }.bind(this);
 
-    this.ui.addEventListener('mousemove', moveListener);
+    this.banana.addEventListener('mousemove', moveListener);
 
     // Unfortunately I think we need to store one listener on the gorillas
     // object.
     this.mouseUpListener = function(e) {
-        this.ui.removeEventListener('mousemove', moveListener);
+        this.banana.removeEventListener('mousemove', moveListener);
         return this.mouseUp(0, point, e);
     }.bind(this);
 
-    this.ui.addEventListener('mouseup', this.mouseUpListener);
+    this.banana.addEventListener('mouseup', this.mouseUpListener);
   }
 };
 
@@ -279,12 +291,12 @@ Gorillas.prototype.mouseMoved = function(
   e
 ) {
   // Clear the UI layer.
-  this.uiContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
+  this.bananaContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
 
-  this.uiContext.beginPath();
-  this.uiContext.moveTo(startPoint.x, startPoint.y);
-  this.uiContext.lineTo(e.layerX, e.layerY);
-  this.uiContext.stroke();
+  this.bananaContext.beginPath();
+  this.bananaContext.moveTo(startPoint.x, startPoint.y);
+  this.bananaContext.lineTo(e.layerX, e.layerY);
+  this.bananaContext.stroke();
 };
 
 // Throws the banana.
@@ -294,11 +306,11 @@ Gorillas.prototype.mouseUp = function(
   e
 ) {
   // Remove the mouseUp listener.
-   this.ui.removeEventListener('mouseup', this.mouseUpListener);
+   this.banana.removeEventListener('mouseup', this.mouseUpListener);
 
   // Clear the UI layer.
   console.log("mouse up!");
-  this.uiContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
+  this.bananaContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
 
   // Calculate the velocity from the mouse distance moved.
   var xVel = (e.layerX - startPoint.x) * 1.5;
@@ -324,7 +336,7 @@ Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, t
 
   // Clear the previous banana.
   if (this.bananaPosition.x !== undefined) {
-    this.uiContext.clearRect(
+    this.bananaContext.clearRect(
       this.bananaPosition.x,
       this.bananaPosition.y,
       this.bananaImgs[0].width,
@@ -378,7 +390,7 @@ Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, t
   // Draw the rotated banana.
   var bananaSeq = parseInt(deltaTime, 10) % this.numBananaImgs;
   var bananaImg = this.bananaImgs[bananaSeq];
-  this.uiContext.drawImage(bananaImg, xpos, ypos);
+  this.bananaContext.drawImage(bananaImg, xpos, ypos);
 
   // Timeout after 5 seconds.
   if (time - startTime < 5000) {
@@ -436,8 +448,12 @@ Gorillas.prototype.hasGorillaCollision = function(x, y, width, height, gorillaPo
 };
 
 Gorillas.prototype.nextTurn = function() {
+  if (this.turnNumber === null) {
+    this.turnNumber = 1;
+  }
+
   this.turnNumber += 1;
-  console.log("It is now player %d's turn", this.currentPlayer());
+  this.redrawUILayer();
 };
 
 Gorillas.prototype.currentPlayer = function() {
@@ -446,11 +462,40 @@ Gorillas.prototype.currentPlayer = function() {
 
 Gorillas.prototype.nextRound = function() {
   this.startingPlayer = this.randomIntBetween(0, 1);
-  this.turnNumber = 0;
+  this.turnNumber = null;
 
   this.initScreen();
   this.placeBuildings();
   this.placeGorillas();
+  this.nextTurn();
 
   console.log("It is player %d's turn", this.currentPlayer());
+};
+
+
+
+Gorillas.prototype.redrawUILayer = function() {
+  this.uiContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
+
+  // Draw the sun.
+  this.uiContext.drawImage(this.sunImg, this.toPixels(this.mapWidth) / 2 - (this.sunImg.width / 2), 10);
+
+  // Draw the text.
+  this.uiContext.fillStyle = "white";
+  this.uiContext.font = "16px monospace";
+
+  this.uiContext.textAlign = "left";
+  this.uiContext.fillText("Player 1", 10, 20);
+
+  this.uiContext.textAlign = "right";
+  this.uiContext.fillText("Player 2", this.toPixels(this.mapWidth) - 10, 20);
+
+  if (this.currentPlayer() === 0) {
+    this.uiContext.textAlign = "left";
+    this.uiContext.fillText("Your turn", 10, 40);
+    this.uiContext.fillText("Player 1", 10, 20);
+  } else {
+    this.uiContext.textAlign = "right";
+    this.uiContext.fillText("Your turn", this.toPixels(this.mapWidth) - 10, 40);
+  }
 };

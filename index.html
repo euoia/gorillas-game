@@ -12,6 +12,7 @@
 
 		<script src="js/jquery-2.1.0.js"></script>
 		<script src="js/gorillas.js" type="text/javascript" charset="utf-8"></script>
+		<script src="js/imageLoader.js" type="text/javascript" charset="utf-8"></script>
 		<!-- Prod: <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script> -->
 
         <link rel="stylesheet" href="css/normalize.min.css">
@@ -20,7 +21,8 @@
 
 		<script type="text/javascript" charset="utf-8">
 			var gorillas;
-			$(document).ready (function () {
+
+			$(window).load (function () {
 				gorillas = new Gorillas({
 					mapWidth: 80,
 					mapHeight: 50,
@@ -31,6 +33,6 @@
     </head>
     <body>
 		<!--  TODO: Dynamically add the canvas element. -->
-		<div id="gorillas"><canvas id="c"></canvas><canvas id="ui"></canvas></div>
+		<div id="gorillas"><canvas id="c"></canvas><canvas id="ui"></canvas><canvas id="banana"></canvas></div>
 	</body>
 </html>
