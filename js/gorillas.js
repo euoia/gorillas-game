@@ -28,6 +28,9 @@ function Gorillas(options) {
   // How many turns have passed?
   this.turnNumber = null;
 
+  // Store the number of wins for each player.
+  this.wins = [0, 0];
+  this.maxRounds = 3;
 
   // TODO: Dynamically add the canvas element.
   this.screen = document.getElementById(options.screen);
@@ -360,19 +363,27 @@ Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, t
   }
 
   if (hasEdgeCollision) {
-    console.log("Collision!");
+      console.log("collision!");
 
+    // TODO: Check both gorillas.
     var hasGorillaCollision = this.hasGorillaCollision(
       xpos - 2,
       ypos - 2,
       this.bananaImgs[0].width + 2,
       this.bananaImgs[0].height + 2,
-      this.gorillaPositions[1]);
+      this.gorillaPositions[this.otherPlayer()]);
 
     if (hasGorillaCollision) {
+      this.wins[this.currentPlayer()] += 1;
       console.log("Gorilla collision!");
-      console.log("Player %d wins this round!", this.currentPlayer());
-      this.nextRound();
+
+      // Check for end of game conditions.
+      if (this.enoughWins(this.currentPlayer())) {
+        this.endOfGame(this.currentPlayer());
+      } else {
+        this.nextRound();
+      }
+
       return;
     }
 
@@ -455,6 +466,10 @@ Gorillas.prototype.currentPlayer = function() {
   return (this.turnNumber + this.startingPlayer) % 2;
 };
 
+Gorillas.prototype.otherPlayer = function() {
+  return (this.turnNumber + this.startingPlayer + 1) % 2;
+};
+
 Gorillas.prototype.nextRound = function() {
   this.startingPlayer = this.randomIntBetween(0, 1);
   this.turnNumber = null;
@@ -497,4 +512,32 @@ Gorillas.prototype.redrawUILayer = function() {
 
 Gorillas.prototype.getBuildingMidpoint = function(buildingIdx) {
   return this.buildings[buildingIdx].x + (this.buildings[buildingIdx].width / 2);
+};
+
+Gorillas.prototype.enoughWins = function(playerIdx) {
+  if (this.wins[playerIdx] > this.maxRounds / 2) {
+    return true;
+  }
+
+  return false;
+};
+
+Gorillas.prototype.endOfGame = function(winningPlayerIdx) {
+  this.initScreen();
+
+  var winningText;
+  if (winningPlayerIdx === 0) {
+    winningText = "Player 1 wins!";
+  } else {
+    winningText = "Player 2 wins!";
+  }
+
+  // Draw the text.
+  this.uiContext.fillStyle = "white";
+  this.uiContext.font = "16px monospace";
+
+  this.uiContext.textAlign = "center";
+  this.uiContext.fillText(winningText,
+    this.toPixels(this.mapWidth / 2),
+    this.toPixels(this.mapHeight / 2));
 };
