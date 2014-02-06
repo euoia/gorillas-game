@@ -47,8 +47,18 @@ function Gorillas(options) {
   this.initScreen();
   this.placeBuildings();
 
-  // 2-array of positions for player 1 and player 2 gorillas respectively.
+  // 2-array of positions for player 0 and player 1 gorillas respectively.
   this.gorillaPositions = [];
+
+  // Object storing the position of the banana.
+  this.bananaPosition = {};
+
+  // Which player has the first turn this round?
+  // 0 => Player 0, 1 => Player 1.
+  this.startingPlayer = 0;
+
+  // How many turns have passed?
+  this.turnNumber = 0;
 
   // If we had more images I would write a proper preloader.
   // TODO: Make a preloader so that the banana is definitely loaded.
@@ -89,11 +99,15 @@ Gorillas.prototype.placeBuildings = function() {
 };
 
 Gorillas.prototype.placeGorillas = function() {
-  var player1GorillaX = this.randomIntBetween(2, 10);
-  var player2GorillaX = this.randomIntBetween(this.mapWidth - 10, this.mapWidth - 2);
+  var player0GorillaX = this.randomIntBetween(2, 10);
+  var player1GorillaX = this.randomIntBetween(this.mapWidth - 10, this.mapWidth - 2);
 
-  this.placeGorilla(this.findGorillaLocation(this.toPixels(player1GorillaX)));
-  this.placeGorilla(this.findGorillaLocation(this.toPixels(player2GorillaX)));
+  this.gorillaPositions[0] = this.findGorillaLocation(this.toPixels(player0GorillaX));
+  this.gorillaPositions[1] = this.findGorillaLocation(this.toPixels(player1GorillaX));
+
+
+  this.placeGorilla(this.gorillaPositions[0]);
+  this.placeGorilla(this.gorillaPositions[1]);
 };
 
 // TODO: Do not intersect a building when placing the gorillas.
@@ -126,7 +140,6 @@ Gorillas.prototype.findGorillaLocation = function(xpos) {
 Gorillas.prototype.placeGorilla = function(point) {
   //console.log("Placing gorilla at x=%d y=%d", point.x, point.y);
   this.context.drawImage(this.gorillaImg, point.x, point.y);
-  this.gorillaPositions.push(point);
 };
 
 // Converts a size in grid positions to pixels
@@ -232,15 +245,14 @@ Gorillas.prototype.canvasClicked = function(e) {
 
   var point = {'x': e.layerX, 'y': e.layerY};
 
-  // Check if player 1 gorilla was clicked.
+  // Check if the current player's gorilla was clicked.
   var pointIsInsideBox = this.pointIsInsideBox(
     point,
-    this.gorillaPositions[0].x,
-    this.gorillaPositions[0].y,
+    this.gorillaPositions[this.currentPlayer()].x,
+    this.gorillaPositions[this.currentPlayer()].y,
     this.gorillaImg.width,
     this.gorillaImg.height
   );
-
 
   if (pointIsInsideBox === true) {
     var moveListener = function(e) {
@@ -294,8 +306,8 @@ Gorillas.prototype.mouseUp = function(
 
   // But launch the banana from same same point relative to the gorilla each time.
   var launchPoint = {
-    'x': this.gorillaPositions[0].x,
-    'y': this.gorillaPositions[0].y - 50
+    'x': this.gorillaPositions[this.currentPlayer()].x,
+    'y': this.gorillaPositions[this.currentPlayer()].y - 50
   };
 
   // TODO: If the exit point is inside the gorilla's box, don't throw.
@@ -310,42 +322,71 @@ Gorillas.prototype.animateBanana = function(startTime, startPoint, xVel, yVel, t
   var xpos = startPoint.x + (xVel * deltaTime);
   var ypos = startPoint.y + (yVel * deltaTime) + (this.gravity * deltaTime * deltaTime);
 
-  this.uiContext.clearRect(0, 0, this.toPixels(this.mapWidth), this.toPixels(this.mapHeight));
+  // Clear the previous banana.
+  if (this.bananaPosition.x !== undefined) {
+    this.uiContext.clearRect(
+      this.bananaPosition.x,
+      this.bananaPosition.y,
+      this.bananaImgs[0].width,
+      this.bananaImgs[0].height);
+  }
 
-  // Out of bounds to the right.
-  if (xpos > this.toPixels(this.mapWidth)) {
+  // Out of bounds to the left or right.
+  if (xpos > this.toPixels(this.mapWidth) || xpos < 0) {
+    console.log("out of bounds");
+    this.nextTurn();
+    return;
+  }
+
+  this.bananaPosition = {'x': xpos, 'y': ypos};
+
+  // Check for bounds collision.
+  var hasEdgeCollision = false;
+
+  // Only check if the banana isn't outside the top of the map.
+  if (ypos > 0) {
+    hasEdgeCollision = this.hasEdgeCollision(
+      xpos + 5,
+      ypos + 5,
+      this.bananaImgs[0].width - 5,
+      this.bananaImgs[0].height - 5);
+  }
+
+  if (hasEdgeCollision) {
+    console.log("Collision!");
+
+    var hasGorillaCollision = this.hasGorillaCollision(
+      xpos - 2,
+      ypos - 2,
+      this.bananaImgs[0].width + 2,
+      this.bananaImgs[0].height + 2,
+      this.gorillaPositions[1]);
+
+    if (hasGorillaCollision) {
+      console.log("Gorilla collision!");
+      console.log("Player %d wins this round!", this.currentPlayer());
+      this.nextRound();
+      return;
+    }
+
+    this.nextTurn();
+
+    this.context.drawImage(this.explosionImg, xpos, ypos);
     return;
   }
 
   // Draw the rotated banana.
   var bananaSeq = parseInt(deltaTime, 10) % this.numBananaImgs;
   var bananaImg = this.bananaImgs[bananaSeq];
-
-  // Check for bounds collision.
-  var hasEdgeCollision = false;
-
-  // Only check if the banana isn't outside the top of the map.
-  if (ypos > 0 && xpos < this.toPixels(this.mapWidth)) {
-    hasEdgeCollision = this.checkEdgeCollision(
-      xpos + 4,
-      ypos + 4,
-      this.bananaImgs[0].width - 4,
-      this.bananaImgs[0].height - 4);
-  }
-
-  if (hasEdgeCollision) {
-    console.log("Collision!");
-    this.context.drawImage(this.explosionImg, xpos, ypos);
-    return;
-  }
-
   this.uiContext.drawImage(bananaImg, xpos, ypos);
 
   // Timeout after 5 seconds.
   if (time - startTime < 5000) {
     window.requestAnimationFrame(this.animateBanana.bind(this, startTime, startPoint, xVel, yVel));
+  } else {
+    console.log("timeout");
+    this.nextTurn();
   }
-
 
 };
 
@@ -362,9 +403,8 @@ Gorillas.prototype.pointIsInsideBox = function(point, boxX, boxY, boxWidth, boxH
   return false;
 };
 
-
 // Just check the corners.
-Gorillas.prototype.checkEdgeCollision = function(x, y, width, height) {
+Gorillas.prototype.hasEdgeCollision = function(x, y, width, height) {
     var collision = (
       this.isBackgroundColour(this.context.getImageData(x,y,1,1).data) === false ||
       this.isBackgroundColour(this.context.getImageData(x+width,y,1,1).data) === false ||
@@ -373,4 +413,44 @@ Gorillas.prototype.checkEdgeCollision = function(x, y, width, height) {
     );
 
     return collision;
+};
+
+Gorillas.prototype.hasGorillaCollision = function(x, y, width, height, gorillaPosition) {
+    var checkPoint = function (pointX, pointY) {
+      return this.pointIsInsideBox (
+        {'x': pointX, 'y': pointY},
+        gorillaPosition.x,
+        gorillaPosition.y,
+        this.gorillaImg.width,
+        this.gorillaImg.height);
+    }.bind(this);
+
+    var collision = (
+      checkPoint(x, y) ||
+      checkPoint(x + width, y) ||
+      checkPoint(x, y + height) ||
+      checkPoint(x + width, y + height)
+    );
+
+    return collision;
+};
+
+Gorillas.prototype.nextTurn = function() {
+  this.turnNumber += 1;
+  console.log("It is now player %d's turn", this.currentPlayer());
+};
+
+Gorillas.prototype.currentPlayer = function() {
+  return (this.turnNumber + this.startingPlayer) % 2;
+};
+
+Gorillas.prototype.nextRound = function() {
+  this.startingPlayer = this.randomIntBetween(0, 1);
+  this.turnNumber = 0;
+
+  this.initScreen();
+  this.placeBuildings();
+  this.placeGorillas();
+
+  console.log("It is player %d's turn", this.currentPlayer());
 };
