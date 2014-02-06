@@ -10,6 +10,25 @@ function Gorillas(options) {
   this.mapWidth = options.mapWidth;
   this.mapHeight = options.mapHeight;
 
+  // 2-array of positions for player 0 and player 1 gorillas respectively.
+  this.gorillaPositions = [];
+
+  // Object storing the position of the banana.
+  this.bananaPosition = {};
+
+  // Store the buildings so we can place the gorillas more intelligently.
+  // Array of objects like:
+  // {'xpos': buildingXPosition, 'width': buildingWidth, 'height': buildingHeight}
+  this.buildings = [];
+
+  // Which player has the first turn this round?
+  // 0 => Player 0, 1 => Player 1.
+  this.startingPlayer = 0;
+
+  // How many turns have passed?
+  this.turnNumber = null;
+
+
   // TODO: Dynamically add the canvas element.
   this.screen = document.getElementById(options.screen);
   this.screen.style.width = this.toPixels(this.mapWidth) + 'px';
@@ -58,19 +77,6 @@ function Gorillas(options) {
   this.initScreen();
   this.placeBuildings();
 
-  // 2-array of positions for player 0 and player 1 gorillas respectively.
-  this.gorillaPositions = [];
-
-  // Object storing the position of the banana.
-  this.bananaPosition = {};
-
-  // Which player has the first turn this round?
-  // 0 => Player 0, 1 => Player 1.
-  this.startingPlayer = 0;
-
-  // How many turns have passed?
-  this.turnNumber = null;
-
   // If we had more images I would write a proper preloader.
   // TODO: Make a preloader so that the banana is definitely loaded.
   imageLoader.done(function () {
@@ -92,7 +98,10 @@ Gorillas.prototype.placeBuildings = function() {
     height,
     lastHeight;
 
+  this.buildings = [];
+
   while (xPos < this.mapWidth) {
+    // Ensure no adjacent buildings have the same width or height.
     while (lastWidth === width || lastHeight === height) {
       width = this.randomIntBetween(6, 10);
       height = this.randomIntBetween(6, 28);
@@ -110,42 +119,27 @@ Gorillas.prototype.placeBuildings = function() {
 };
 
 Gorillas.prototype.placeGorillas = function() {
-  var player0GorillaX = this.randomIntBetween(2, 10);
-  var player1GorillaX = this.randomIntBetween(this.mapWidth - 10, this.mapWidth - 2);
+  // Choose the start locations for the gorillas.
+  var player0Building = this.randomIntBetween(1, 3);
+  var player1Building = this.randomIntBetween(this.buildings.length - 4, this.buildings.length - 2);
 
-  this.gorillaPositions[0] = this.findGorillaLocation(this.toPixels(player0GorillaX));
-  this.gorillaPositions[1] = this.findGorillaLocation(this.toPixels(player1GorillaX));
 
+  this.gorillaPositions[0] = this.findGorillaLocation(player0Building);
+  this.gorillaPositions[1] = this.findGorillaLocation(player1Building);
 
   this.placeGorilla(this.gorillaPositions[0]);
   this.placeGorilla(this.gorillaPositions[1]);
 };
 
-// TODO: Do not intersect a building when placing the gorillas.
-// Place a single gorilla - search down from the top.
-Gorillas.prototype.findGorillaLocation = function(xpos) {
-  // Search for the first non-blue pixel (represents a building).
+// Given a building index, find where to place the gorilla on the map.
+Gorillas.prototype.findGorillaLocation = function(buildingIdx) {
+  var xpos = this.getBuildingMidpoint(buildingIdx) - (this.gorillaImg.width / 2);
+  var ypos = (
+    this.toPixels(this.mapHeight) -
+    this.buildings[buildingIdx].height -
+    this.gorillaImg.height);
 
-  var imgData;
-  var x = xpos, y = 0;
-
-  while (y < this.toPixels(this.mapHeight)) {
-    imgData = this.context.getImageData(x,y,1,1);
-
-    if (this.isBackgroundColour(imgData.data) === false) {
-      //console.log("Found non-background colour at x=%d y=%d", x, y);
-      return {
-        'x': x,
-        'y': y - this.gorillaImg.height
-      };
-    }
-
-    y += 1;
-  }
-
-  return {'x': x, 'y': y};
-  //throw new error('Unable to place gorilla!');
-
+  return {'x': xpos, 'y': ypos};
 };
 
 Gorillas.prototype.placeGorilla = function(point) {
@@ -174,6 +168,8 @@ Gorillas.prototype.placeBuilding = function(
                    this.toPixels(this.mapHeight - height),
                    this.toPixels(xpos + width) - this.borderSize,
                    this.toPixels(this.mapHeight));
+
+  this.buildings.push({'x': this.toPixels(xpos), 'width': this.toPixels(width), 'height': this.toPixels(height)});
 
   //console.log("Placing building colour=%s xpos=%d width=%d height=%d", colour, xpos, width, height);
 };
@@ -497,4 +493,8 @@ Gorillas.prototype.redrawUILayer = function() {
     this.uiContext.textAlign = "right";
     this.uiContext.fillText("Your turn", this.toPixels(this.mapWidth) - 10, 40);
   }
+};
+
+Gorillas.prototype.getBuildingMidpoint = function(buildingIdx) {
+  return this.buildings[buildingIdx].x + (this.buildings[buildingIdx].width / 2);
 };
